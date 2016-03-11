@@ -1,0 +1,603 @@
+// ConsoleApplication1.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+//#include <afx.h>
+// Standard Library
+#include <iostream>
+#include <math.h>
+#include <fstream>
+// OpenCV Header
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+#define PI 3.1415923874
+
+using namespace std;
+int check_intersect();
+
+
+struct point{           //the point information
+	float x;
+	float y;
+};
+
+struct point p3;        // p3 as for the very left point etc.
+struct point p1;
+struct point p2;
+struct point p4;
+struct point r1;
+struct point r2;
+struct point d1;
+
+float theta1, theta2;
+int r = 0;
+float rec_h = 20, rec_w = 25;
+float bottom_line = 400, theta_stairs = 0, theta2_b = 0, up_num = 0, theta4_b = 0;
+int inter_up_mode, mode = 1, stairs = 0, front = 0, stairs_num = 0;
+
+IplImage * img;
+
+void open_window(){
+	img = cvCreateImage(cvSize(600, 500), 8, 3);    //create image
+	cvSet(img, cvScalar(255, 255, 255));            //create the white background
+	cvShowImage("car", img);                        //show image
+}
+
+void reset_window(){
+	cvSet(img, cvScalar(255, 255, 255));
+}
+
+void draw_bottom_line(){
+	cvLine(img, cvPoint(0, bottom_line), cvPoint(600, bottom_line), cvScalar(0, 0, 0));   //BGR
+	cvShowImage("car", img);
+}
+
+void initial_car_point(){
+	theta1 = ((60 * PI) / 180);
+	theta2 = ((60 * PI) / 180);
+	r = 55;     //car length
+	p1.x = 100;
+	p1.y = 400;
+	p3.x = p1.x - (r*cos(theta1));
+	p3.y = p1.y - (r*sin(theta1));  //down is positive
+	p2.x = p1.x + r;
+	p2.y = p1.y;
+	p4.x = p2.x + (r*cos(theta2));
+	p4.y = p2.y - (r*sin(theta2));
+}
+
+void draw_car(){
+	cvCircle(img, cvPoint(p3.x, p3.y), 5, cvScalar(0, 0, 255));     // add to move together
+	cvCircle(img, cvPoint(p1.x, p1.y), 5, cvScalar(0, 0, 255));
+	cvCircle(img, cvPoint(p2.x, p2.y), 5, cvScalar(0, 0, 255));
+	cvCircle(img, cvPoint(p4.x, p4.y), 5, cvScalar(0, 0, 255));
+	cvLine(img, cvPoint(p3.x, p3.y), cvPoint(p1.x, p1.y), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(p1.x, p1.y), cvPoint(p2.x, p2.y), cvScalar(0, 0, 0));
+	cvLine(img, cvPoint(p2.x, p2.y), cvPoint(p4.x, p4.y), cvScalar(0, 0, 0));
+	cvShowImage("car", img);
+}
+
+void draw_obstacle(){
+	stairs_num = 5;
+	r1.x = 200;
+	r1.y = bottom_line - rec_h;
+	r2.x = r1.x + rec_w;
+	r2.y = r1.y - rec_h;
+	d1.x = 400;
+	d1.y = bottom_line - rec_h;
+
+	cvLine(img, cvPoint(r1.x, bottom_line), cvPoint(r1.x, bottom_line - rec_h), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(r1.x + rec_w, bottom_line - rec_h), cvPoint(r1.x + rec_w, bottom_line - (2 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(r1.x + (2 * rec_w), bottom_line - (2 * rec_h)), cvPoint(r1.x + (2 * rec_w), bottom_line - (3 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(r1.x + (3 * rec_w), bottom_line - (3 * rec_h)), cvPoint(r1.x + (3 * rec_w), bottom_line - (4 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(r1.x + (4 * rec_w), bottom_line - (4 * rec_h)), cvPoint(r1.x + (4 * rec_w), bottom_line - (5 * rec_h)), cvScalar(0, 0, 0));   //BGR
+
+	cvLine(img, cvPoint(r1.x, bottom_line - rec_h), cvPoint(r1.x + rec_w, bottom_line - rec_h), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(r1.x + rec_w, bottom_line - (2 * rec_h)), cvPoint(r1.x + (2 * rec_w), bottom_line - (2 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(r1.x + (2 * rec_w), bottom_line - (3 * rec_h)), cvPoint(r1.x + (3 * rec_w), bottom_line - (3 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(r1.x + (3 * rec_w), bottom_line - (4 * rec_h)), cvPoint(r1.x + (4 * rec_w), bottom_line - (4 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(r1.x + (4 * rec_w), bottom_line - (5 * rec_h)), cvPoint(r1.x + (5 * rec_w), bottom_line - (5 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvShowImage("car", img);
+
+	cvLine(img, cvPoint(r1.x + (4 * rec_w), bottom_line - (5 * rec_h)), cvPoint(d1.x + rec_w, bottom_line - (5 * rec_h)), cvScalar(0, 0, 0));   //BGR
+
+	cvLine(img, cvPoint(d1.x + (5 * rec_w), bottom_line), cvPoint(d1.x + (5 * rec_w), bottom_line - rec_h), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(d1.x + (4 * rec_w), bottom_line - rec_h), cvPoint(d1.x + (4 * rec_w), bottom_line - (2 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(d1.x + (3 * rec_w), bottom_line - (2 * rec_h)), cvPoint(d1.x + (3 * rec_w), bottom_line - (3 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(d1.x + (2 * rec_w), bottom_line - (3 * rec_h)), cvPoint(d1.x + (2 * rec_w), bottom_line - (4 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(d1.x + rec_w, bottom_line - (4 * rec_h)), cvPoint(d1.x + rec_w, bottom_line - (5 * rec_h)), cvScalar(0, 0, 0));   //BGR
+
+	cvLine(img, cvPoint(d1.x, bottom_line - (5 * rec_h)), cvPoint(d1.x + rec_w, bottom_line - (5 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(d1.x + rec_w, bottom_line - (4 * rec_h)), cvPoint(d1.x + (2 * rec_w), bottom_line - (4 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(d1.x + (2 * rec_w), bottom_line - (3 * rec_h)), cvPoint(d1.x + (3 * rec_w), bottom_line - (3 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(d1.x + (3 * rec_w), bottom_line - (2 * rec_h)), cvPoint(d1.x + (4 * rec_w), bottom_line - (2 * rec_h)), cvScalar(0, 0, 0));   //BGR
+	cvLine(img, cvPoint(d1.x + (4 * rec_w), bottom_line - rec_h), cvPoint(d1.x + (5 * rec_w), bottom_line - rec_h), cvScalar(0, 0, 0));   //BGR
+	cvShowImage("car", img);
+}
+
+void align_ground(){
+	if (theta1 > 0){
+		if (p3.y > 400){
+			p1.y = p1.y - (p3.y - 400); //aline the bottom line
+			p3.y = 400;
+		}
+		if (p4.y > 400){
+			p2.y = p2.y - (p4.y - 400); //aline the bottom line
+			p4.y = 400;
+		}
+	}
+	if (theta1 <= 0){
+		int low = p1.y, change = 0;
+		if (p2.y > p1.y){
+			low = p2.y;
+			change = 1;
+		}
+		if (low < 400){
+			if (change == 1){
+				p1.y = p1.y + (400 - p2.y);
+				p3.y = p3.y + (400 - p2.y);
+				p4.y = p4.y + (400 - p2.y);
+				p2.y = 400;
+			}
+			else{
+				p2.y = p2.y + (400 - p1.y);
+				p3.y = p3.y + (400 - p1.y);
+				p4.y = p4.y + (400 - p1.y);
+				p1.y = 400;
+			}
+		}
+	}
+}
+
+void move_forward(){
+	p1.x += 1;
+	p2.x += 1;
+	p3.x += 1;
+	p4.x += 1;
+	reset_window();
+	draw_car();
+	draw_obstacle();
+	draw_bottom_line();
+	cvWaitKey(10);
+}
+
+void move_up_stairs(){
+
+	cout << "stair= " << stairs << endl;
+	float theta_body = (asin((p1.y - p2.y) / r));
+	float theta3_b = asin((p3.y - p1.y) / r);
+	cout << "start of move_up_stairs" << endl;
+	/*cout << "theta_body = " << theta_body << endl;
+	cout << "theta_stairs = " << theta_stairs << endl;
+	cout << "theta3_b = " << theta3_b << endl;
+	cout << "theta2_b = " << theta2_b << endl;*/
+	if (theta_body <= theta_stairs && p1.y >= bottom_line){ //p1離開地面 & theta_body <= theta_stairs
+		cout << "step1：前腳上樓梯" << endl; //前腳上樓梯
+		theta2_b = atan((p2.y - p4.y) / (p4.x - p2.x));
+		p2.x = p2.x;
+		p2.y = p2.y - tan(theta2_b);
+		p4.x = p2.x + (r*cos(theta2_b));
+		p4.y = p2.y - (r*sin(theta2_b));
+		theta_body = (asin((p1.y - p2.y) / r));
+		p1.x = p2.x - (r * cos(theta_body));
+		p1.y = p2.y + (r * sin(theta_body));
+		theta3_b = asin((bottom_line - p1.y) / r);
+		p3.x = p1.x - (r*cos(theta3_b));
+		p3.y = p1.y + (r*sin(theta3_b));
+		cout << "theta_stairs = " << theta_stairs << endl;
+		cout << "theta_body = " << theta_body << endl;
+	}
+	//theta_body = (asin((p1.y - p2.y) / r));
+	//theta3_b = asin((p3.y - p1.y) / r);
+
+	//theta_stairs > theta3_b & theta_body <= theta_stairs
+	if ((theta_stairs - theta3_b) >= 0.000001 && theta_body >= theta_stairs - 0.000001 && p3.y >= bottom_line){
+		cout << "step2：後腳抬高身體p1" << endl;
+		p1.x = p1.x;
+		p1.y = p1.y - tan(theta2_b);
+		p2.x = p1.x + (r*cos(theta2_b));
+		p2.y = p1.y - (r*sin(theta2_b));
+		p4.x = p2.x + (r*cos(theta2_b));
+		p4.y = p2.y - (r*sin(theta2_b));
+		theta3_b = asin((bottom_line - p1.y) / r);
+		p3.x = p1.x - (r*cos(theta3_b));
+		p3.y = p1.y + (r*sin(theta3_b));
+		cout << "theta_stairs = " << theta_stairs << endl;
+		cout << "theta3_b = " << theta3_b << endl;
+	}
+
+	//theta3_b = asin((p3.y - p1.y) / r);
+	if (p1.x > r1.x && theta3_b <= theta2_b){
+		if (abs(theta2_b - theta3_b) >= 0.000001){
+			cout << "step3：後腳伸直為theta2_b " << endl;
+			p1.x = p1.x;
+			p1.y = p1.y - tan(theta2_b);
+			p2.x = p1.x + (r*cos(theta2_b));
+			p2.y = p1.y - (r*sin(theta2_b));
+			p4.x = p2.x + (r*cos(theta2_b));
+			p4.y = p2.y - (r*sin(theta2_b));
+			if (p3.y < bottom_line){
+				cout << "step4-1：p3.y 高於 bottom_line " << endl;
+				theta3_b += ((1 * PI) / 180);
+				p3.x = p1.x - (r*cos(theta3_b));
+				p3.y = p1.y + (r*sin(theta3_b));
+			}
+			else{
+				cout << "step4-2 ：p3.y 貼地" << endl;
+				p3.x = p1.x - (r*cos(theta3_b));
+				p3.y = p1.y + (r*sin(theta3_b));
+			}
+		}
+	}
+
+	if (abs(theta_body - theta_stairs) <= 0.000001 && abs(theta3_b - theta_stairs) <= 0.01 && abs(theta2_b - theta_stairs) <= 0.01){
+		cout << "step5：上樓梯 " << endl;
+		p1.x = p1.x;
+		p1.y = p1.y - tan(theta2_b);
+		p2.x = p1.x + (r*cos(theta2_b));
+		p2.y = p1.y - (r*sin(theta2_b));
+		p4.x = p2.x + (r*cos(theta2_b));
+		p4.y = p2.y - (r*sin(theta2_b));
+		p3.x = p1.x - (r*cos(theta2_b));
+		p3.y = p1.y + (r*sin(theta2_b));
+		cout << "theta3_b = " << theta3_b << endl;
+		cout << "theta2_b = " << theta2_b << endl;
+	}
+	if (abs(theta_body - theta_stairs) <= 0.000001 && abs(theta3_b - theta_stairs) <= 0.01 && p4.y >= p2.y){    //front leg is herizontial
+		cout << "step 6：前腳上最高階" << endl;
+		p1.x = p1.x;
+		p1.y = p1.y - tan(theta3_b);
+		p2.x = p1.x + (r*cos(theta3_b));
+		p2.y = p1.y - (r*sin(theta3_b));
+		theta4_b = asin((p4.y - p2.y) / r);
+		p4.x = p2.x + (r*cos(theta4_b));
+		p4.y = p2.y + (r*sin(theta4_b));
+		p3.x = p1.x - (r*cos(theta3_b));
+		p3.y = p1.y + (r*sin(theta3_b));
+	}
+	if (p1.y <= p4.y){
+		cout << "stpe7：後腳上最高階" << endl;
+		p1.x = p1.x;
+		p1.y = p1.y;
+		theta1 = asin((p3.y - p1.y) / r);
+		cout << "theta_body = " << theta_body << endl;
+		while (p2.y <= p4.y && theta_body > 0){
+			cout << "stpe7-1：放身體" << endl;
+			theta_body -= ((1 * PI) / 180);
+			if (theta_body < 0){
+				theta_body = 0;
+			}
+			p2.x = p1.x + (r*cos(theta_body));
+			p2.y = p1.y - (r*sin(theta_body));
+			theta4_b = asin((p4.y - p2.y) / r);
+			p4.x = p2.x + (r*cos(theta4_b));
+			p4.y = p2.y + (r*sin(theta4_b));
+			reset_window();
+			draw_car();
+			draw_obstacle();
+			draw_bottom_line();
+			cvWaitKey(10);
+		}
+		while (theta1 >= 0){
+			cout << "stpe7-2：抬後腳" << endl;
+			theta1 -= (1 * PI) / 180;
+			p3.x = p1.x - (r*cos(theta1));
+			p3.y = p1.y + (r*sin(theta1));
+			reset_window();
+			draw_car();
+			draw_obstacle();
+			draw_bottom_line();
+			cvWaitKey(10);
+		}
+	}
+
+}
+
+void up_platform(){
+	float temp_theta = theta1 * 180 / PI;
+	float down = (temp_theta / 50);
+	cout << "in to up_platform" << endl;
+	//flatten the later leg
+	for (int i = 0; i < 50; i++){
+		temp_theta -= down;
+		cout << temp_theta << endl;
+		theta1 = (temp_theta*PI) / 180;
+		p3.x = p1.x - (r*cos(theta1));
+		p3.y = p1.y - (r*sin(theta1));
+		reset_window();
+		draw_car();
+		draw_obstacle();
+		draw_bottom_line();
+		cvWaitKey(10);
+	}
+	float total_theta2 = atan((r1.y - p2.y) / (r1.x - p2.x));
+	for (int i = 0; i < 30; i++){
+		p2.y -= rec_h / 30;
+		theta2 = atan((r1.y - p2.y) / (r1.x - p2.x));
+		p4.x = p2.x + (r * cos(theta2));
+		p4.y = p2.y + (r * sin(theta2));
+		p1.x = p2.x - (r * cos(asin((bottom_line - p2.y) / r)));
+		p1.y = p2.y + (r * sin(asin((bottom_line - p2.y) / r)));
+		cout << "p2.y = " << p2.y << endl;
+		cout << "theta2 = " << (theta2 * 180 / PI) << endl;
+		cout << "theta1 = " << (theta1 * 180 / PI) << endl;
+		theta1 = (90 * PI / 180) - acos((bottom_line - p1.y) / r);
+		p3.x = p1.x - (r * cos(theta1));
+		p3.y = p1.y + (r * sin(theta1));
+		if (check_intersect() == 1){
+			theta_stairs = atan((p2.y - p4.y) / (p4.x - p2.x));
+			break;
+		}
+		reset_window();
+		draw_car();
+		draw_obstacle();
+		draw_bottom_line();
+		cvWaitKey(10);
+	}
+}
+
+void down_platform(){
+	float total_theta2 = asin((p2.y - bottom_line) / r);
+	float add_theta1 = 0;
+	total_theta2 = total_theta2 * 180 / PI;
+	if (theta1 > 0){
+		total_theta2 -= 5;
+		add_theta1 = 5;
+	}
+	for (int i = 0; i < 30; i++){
+		theta2 += (((total_theta2 / 30) * PI) / 180);
+		theta1 += (((add_theta1 / 30) * PI) / 180);
+		p4.x = p2.x + (r * cos(theta2));
+		p4.y = p2.y - (r * sin(theta2));
+		p1.y = p2.y;
+		cout << "theta2 = " << (theta2) << endl;
+		p3.x = p1.x - (r * cos(theta1));
+		p3.y = p1.y + (r * sin(theta1));
+		reset_window();
+		align_ground();
+		draw_car();
+		draw_obstacle();
+		draw_bottom_line();
+		cvWaitKey(10);
+	}
+}
+
+void down_platform_step_2(){
+	float total_theta2 = atan((r1.y - p2.y) / (r1.x - p2.x));
+	for (int i = 0; i < 30; i++){
+		p1.y += rec_h / 30;
+		theta1 = atan((r2.y - p1.y) / (r2.x - p1.x));
+		p3.x = p1.x - (r * cos(theta1));
+		p3.y = p1.y - (r * sin(theta1));
+		p2.y = p1.y;
+		cout << "p2.y = " << p2.y << endl;
+		cout << "theta2 = " << (theta2 * 180 / PI) << endl;
+		cout << "theta1 = " << (theta1 * 180 / PI) << endl;
+		theta2 = asin((p2.y - bottom_line) / r);
+		p4.x = p2.x + (r * cos(theta2));
+		p4.y = p2.y - (r * sin(theta2));
+		reset_window();
+		align_ground();
+		draw_car();
+		draw_obstacle();
+		draw_bottom_line();
+		cvWaitKey(10);
+	}
+}
+
+void up_platform_step_2(){
+	//for (int i = 0; i < 50; i++){
+	while (p1.y < r1.y){
+		p1.y += 1;
+		cout << p1.y << endl;
+		theta1 = asin((p3.y - p1.y) / r);
+		cout << "theta1 = " << ((theta1 / PI) * 180) << endl;
+		cout << (r1.y - p3.y) << endl;
+		cout << (r1.x - p3.x) << endl;
+		p3.x = p1.x - (r*cos(theta1));
+		p3.y = p1.y + (r*sin(theta1));
+		p2.x = p1.x + r;
+		p2.y = p1.y;
+		theta2 = asin((400 - p2.y) / r);
+		p4.x = p2.x + (r*cos(theta2));
+		p4.y = p2.y + (r*sin(theta2));
+		reset_window();
+		draw_car();
+		draw_obstacle();
+		draw_bottom_line();
+		cvWaitKey(10);
+	}
+
+
+	while (p3.y > p1.y){
+		p3.y -= 1;
+		cout << "theta1 = " << ((theta1 / PI) * 180) << endl;
+		theta1 = asin((p3.y - p1.y) / r);
+		p3.x = p1.x - r*cos(theta1);
+		p3.y = p1.y + r*sin(theta1);
+		reset_window();
+		draw_car();
+		draw_obstacle();
+		draw_bottom_line();
+		cvWaitKey(10);
+	}
+}
+
+int check_intersect(){
+	float m2 = 0;
+	if (p4.x > r1.x && p2.x <= (r1.x + ((stairs_num - 1)*rec_w)) && p4.y < bottom_line && p2.y >= (r1.y - ((stairs_num - 1) * rec_h))){
+		//for front arm
+		if (p4.y > p2.y){
+			//down
+			m2 = (p4.y - p2.y) / (p4.x - p2.x);
+		}
+		else{
+			//up
+			m2 = (p2.y - p4.y) / (p2.x - p4.x);
+		}
+		for (int i = 0; i < stairs_num; i++){
+			//when the arm is up and intersected
+			cout << "mode" << mode << endl;
+			float r_x = (r1.x + (i*rec_w));
+			float r_y = (r1.y - (i*rec_h));
+			if (r_x < p4.x && r_y > p4.y && r_x > p2.x && r_y < p2.y){
+				if ((p4.y - 1) <= (m2 * (p4.x - r_x) + r_y) && (p4.y + 1) >= (m2 * (p4.x - r_x) + r_y)){
+					if (i == 0 && mode <= 1){
+						mode++;
+						front++;
+						cout << "intersected obstacle" << endl;
+						up_platform();
+						return 0;
+					}
+					if (i == 1 && mode <= 2){
+						cout << "(r_x, r_y) = " << r_x << "," << r_y << endl;
+						cout << "(p4.x, p4.y) = " << p4.x << "," << p4.y << endl;
+						cout << "(p4.y-1 <= , p4.y+1 >=) = " << (m2 * (p4.x - r_x) + r_y) << "," << (m2 * (p4.x - r_x) + r_y) << endl;
+						mode++;
+						front++;
+						inter_up_mode = 2;
+						cout << "intersected obstacle arm up second loop" << endl;
+						stairs = 1;
+						return 1;
+					}
+				}
+			}
+			/*if (r2.x < p4.x && r2.y > p4.y && r2.x > p2.x && r2.y < p2.y && mode <= 2){
+			if ((p4.y - 1) <= (m2 * (p4.x - r2.x) + r2.y) && (p4.y + 1) >= (m2 * (p4.x - r2.x) + r2.y)){
+			mode++;
+			front++;
+			inter_up_mode = 2;
+			cout << "intersected obstacle arm up second loop" << endl;
+			stairs = 1;
+			return 1;
+			}
+			}*/
+		}
+	}
+	else{
+		//for front arm
+		cout << "intersect into else" << endl;
+		if (mode >= 2){
+			if (p4.y > p2.y){
+				//down
+				m2 = (p4.y - p2.y) / (p4.x - p2.x);
+			}
+			else{
+				//up
+				m2 = (p2.y - p4.y) / (p2.x - p4.x);
+			}
+
+			if (front != 0){
+				float r_x = (r1.x + ((stairs_num - 1)*rec_w));
+				float r_y = (r1.y - ((stairs_num - 1)*rec_h));
+				if (((p4.y - 1) <= (m2 * (p4.x - r_x) + r_y) && (p4.y + 1) >= (m2 * (p4.x - r_x) + r_y)) != 1){
+					front--;
+				}
+			}
+			else{
+				while (p4.y <= p2.y){
+					theta2_b -= ((1 * PI) / 180);
+					p4.x = p2.x + (r*(cos(theta2_b)));
+					p4.y = p2.y - (r*(sin(theta2_b)));
+					reset_window();
+					draw_car();
+					draw_obstacle();
+					draw_bottom_line();
+					cvWaitKey(10);
+				}
+			}
+		}
+	}
+	//when the arm is down and intersected
+	if ((d1.x + rec_w) <= p4.x && (d1.y - (5 * rec_h)) - 1 >= p4.y && (d1.x + rec_w) >= p2.x && (d1.y - (5 * rec_h)) - 1 <= p2.y){
+		//if ((((p4.x - p2.x)/3)+p2.x) >= r2.x){
+		if (p2.x >= (d1.x + rec_w)){
+			cout << "intersected obstacle" << endl;
+			down_platform();
+		}
+	}
+
+	//for back arm
+	float m1 = 0;
+	if (p1.y > p3.y){
+		m1 = (p1.y - p3.y) / (p1.x - p3.x);
+	}
+	else{
+		m1 = (p3.y - p1.y) / (p3.x - p1.x);
+	}
+
+	if (p1.y == p2.y){
+		if (r1.x > p3.x && r1.x < p1.x){
+			if ((p3.y - 1) <= (m1 * (p3.x - r1.x) + r1.y) && (p3.y + 1) >= (m1 * (p3.x - r1.x) + r1.y) && m1 != 0){
+				cout << "intersected obstacle" << endl;
+				up_platform_step_2();
+			}
+		}
+		if ((d1.x + rec_w) > p3.x && (d1.x + rec_w) < p1.x){
+			if ((p1.x - (r / 2)) >= ((d1.x + rec_w) - 0.1) && (p1.x - (r / 2)) <= ((d1.x + rec_w) + 0.1)){
+				cout << "intersected obstacle" << endl;
+				down_platform_step_2();
+			}
+		}
+	}
+}
+
+void move_case(int state){
+	switch (state){
+	case 'r':
+		cout << "input move left arm angle" << endl;
+		cin >> theta1;
+		cout << "input move right arm angle" << endl;
+		cin >> theta2;
+		theta1 = theta1*PI / 180;
+		theta2 = theta2*PI / 180;
+		p3.x = p1.x - (r*cos(theta1));
+		p3.y = p1.y - (r*sin(theta1));  //down is positive
+		p2.x = p1.x + r;
+		p2.y = p1.y;
+		p4.x = p2.x + (r*cos(theta2));
+		p4.y = p2.y - (r*sin(theta2));
+		align_ground();
+		break;
+	case 'd':
+		move_forward();
+		if (stairs == 1){
+			move_up_stairs();
+		}
+		break;
+	case 'a':
+		p1.x -= 1;
+		p2.x -= 1;
+		p3.x -= 1;
+		p4.x -= 1;
+		break;
+	default:
+		break;
+	}
+
+}
+
+int main(){
+
+	char state;
+
+	open_window();
+	initial_car_point();
+	draw_car();
+	draw_obstacle();
+	draw_bottom_line();
+	cvWaitKey(10);
+	while (1){
+		state = cvWaitKey(0);
+		move_case(state);
+		reset_window();
+		draw_car();
+		draw_obstacle();
+		draw_bottom_line();
+		check_intersect();
+		cvWaitKey(10);
+	}
+	cvWaitKey(0);
+	return 0;
+}
